@@ -75,21 +75,23 @@ export async function preloadGfx(
   const response = await fetch('/gfx-manifest.json');
   const manifest = await response.json();
 
-  return new Promise((resolve) => {
-    const gfxTypes = Object.values(GfxType)
-      .filter((v) => typeof v === 'number')
-      .map((v) => v as GfxType);
+  const gfxTypes = Object.values(GfxType)
+    .filter((v) => typeof v === 'number')
+    .map((v) => v as GfxType);
 
-    let total = 0;
-    for (const gfxType of gfxTypes) {
-      total += manifest[gfxType] || 0;
-    }
+  let total = 0;
+  for (const gfxType of gfxTypes) {
+    total += manifest[gfxType] || 0;
+  }
 
-    let loaded = 0;
+  let loaded = 0;
 
-    for (const gfxType of gfxTypes) {
-      const count = manifest[gfxType] || 0;
-      for (let i = 1; i <= count; i++) {
+  const promises: Promise<void>[] = [];
+
+  for (const gfxType of gfxTypes) {
+    const count = manifest[gfxType] || 0;
+    for (let i = 1; i <= count; i++) {
+      const promise = new Promise<void>((resolve) => {
         const img = new Image();
         img.src = `/gfx/gfx${padWithZeros(gfxType, 3)}/${i + 100}.png`;
         img.onload = () => {
@@ -99,19 +101,17 @@ export async function preloadGfx(
           GFX[gfxType][i] = img;
           loaded++;
           onProgress(loaded / total);
+          resolve();
         };
         img.onerror = () => {
           loaded++;
           onProgress(loaded / total);
+          resolve();
         };
-      }
+      });
+      promises.push(promise);
     }
+  }
 
-    const interval = setInterval(() => {
-      if (loaded >= total) {
-        clearInterval(interval);
-        resolve();
-      }
-    }, 100);
-  });
+  await Promise.all(promises);
 }
