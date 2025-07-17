@@ -68,3 +68,50 @@ export function loadBitmapById(gfxType: GfxType, resourceId: number) {
     GFX[gfxType][resourceId] = img;
   };
 }
+
+export async function preloadGfx(
+  onProgress: (percent: number) => void,
+): Promise<void> {
+  const response = await fetch('/gfx-manifest.json');
+  const manifest = await response.json();
+
+  return new Promise((resolve) => {
+    const gfxTypes = Object.values(GfxType)
+      .filter((v) => typeof v === 'number')
+      .map((v) => v as GfxType);
+
+    let total = 0;
+    for (const gfxType of gfxTypes) {
+      total += manifest[gfxType] || 0;
+    }
+
+    let loaded = 0;
+
+    for (const gfxType of gfxTypes) {
+      const count = manifest[gfxType] || 0;
+      for (let i = 1; i <= count; i++) {
+        const img = new Image();
+        img.src = `/gfx/gfx${padWithZeros(gfxType, 3)}/${i + 100}.png`;
+        img.onload = () => {
+          if (!GFX[gfxType]) {
+            GFX[gfxType] = [];
+          }
+          GFX[gfxType][i] = img;
+          loaded++;
+          onProgress(loaded / total);
+        };
+        img.onerror = () => {
+          loaded++;
+          onProgress(loaded / total);
+        };
+      }
+    }
+
+    const interval = setInterval(() => {
+      if (loaded >= total) {
+        clearInterval(interval);
+        resolve();
+      }
+    }, 100);
+  });
+}

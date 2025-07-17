@@ -21,6 +21,7 @@ import {
   setZoom,
   ZOOM,
 } from './game-state';
+import { preloadGfx } from './gfx';
 import { playSfxById, SfxId } from './sfx';
 import { ChangePasswordForm } from './ui/change-password';
 import { CharacterSelect } from './ui/character-select';
@@ -829,6 +830,21 @@ window.addEventListener('DOMContentLoaded', async () => {
   character.sitState = SitState.Floor;
   character.skin = 0;
   client.nearby.characters = [character];
+
+  const loading = document.getElementById('loading');
+  const progressBarFill = document.getElementById(
+    'progress-bar-fill',
+  ) as HTMLDivElement;
+
+  await preloadGfx((p) => {
+    if (progressBarFill) {
+      progressBarFill.style.width = `${p * 100}%`;
+    }
+  });
+
+  if (loading) {
+    loading.classList.add('hidden');
+  }
 
   requestAnimationFrame(render);
 });
